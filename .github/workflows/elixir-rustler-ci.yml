@@ -88,6 +88,11 @@ on:
         required: false
         type: string
         default: ""
+      apt-packages:
+        description: Space-separated Ubuntu packages to install before dependency installation.
+        required: false
+        type: string
+        default: ""
       restore-deps-cache:
         description: Whether to restore deps/_build cache.
         required: false
@@ -127,6 +132,12 @@ jobs:
         env:
           EXTRA_ENV: ${{ inputs.extra-env }}
         run: printf '%s\n' "$EXTRA_ENV" >> "$GITHUB_ENV"
+
+      - name: Install apt packages
+        if: inputs.apt-packages != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ${{ inputs.apt-packages }}
 
       - uses: elixir-vibe/actions/setup-elixir@v1
         with:
@@ -198,6 +209,12 @@ jobs:
         env:
           EXTRA_ENV: ${{ inputs.extra-env }}
         run: printf '%s\n' "$EXTRA_ENV" >> "$GITHUB_ENV"
+
+      - name: Install apt packages
+        if: inputs.apt-packages != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ${{ inputs.apt-packages }}
 
       - uses: elixir-vibe/actions/setup-elixir@v1
         with:

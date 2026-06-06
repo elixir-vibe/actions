@@ -63,6 +63,18 @@ jobs:
         MY_APP_BUILD=1
 ```
 
+For projects with submodules or Ubuntu system package dependencies, pass them through the workflow inputs:
+
+```yaml
+jobs:
+  ci:
+    uses: elixir-vibe/actions/.github/workflows/elixir-rustler-ci.yml@v1
+    with:
+      checkout-submodules: recursive
+      apt-packages: libfontconfig1-dev libfreetype6-dev
+      rust-cache-workspaces: native/my_app_nif -> target
+```
+
 For projects with multiple Rust crates, list each workspace:
 
 ```yaml
