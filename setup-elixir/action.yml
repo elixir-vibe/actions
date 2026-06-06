@@ -1,0 +1,68 @@
+name: Setup Elixir
+description: Set up Erlang/OTP and Elixir with Mix dependency/build caching.
+
+inputs:
+  elixir-version:
+    description: Elixir version passed to erlef/setup-beam.
+    required: true
+  otp-version:
+    description: Erlang/OTP version passed to erlef/setup-beam.
+    required: true
+  working-directory:
+    description: Directory containing mix.exs.
+    required: false
+    default: .
+  cache-prefix:
+    description: Prefix for dependency and PLT cache keys.
+    required: false
+    default: mix
+  restore-deps-cache:
+    description: Whether to restore deps/_build cache.
+    required: false
+    default: "true"
+  restore-plt-cache:
+    description: Whether to restore Dialyzer PLT cache.
+    required: false
+    default: "true"
+  deps-command:
+    description: Command used to fetch dependencies.
+    required: false
+    default: mix deps.get
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Erlang/OTP and Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: ${{ inputs.elixir-version }}
+        otp-version: ${{ inputs.otp-version }}
+
+    - name: Restore Mix cache
+      if: inputs.restore-deps-cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ inputs.working-directory }}/deps
+          ${{ inputs.working-directory }}/_build
+        key: ${{ runner.os }}-${{ inputs.cache-prefix }}-${{ inputs.otp-version }}-${{ inputs.elixir-version }}-${{ hashFiles(format('{0}/mix.lock', inputs.working-directory)) }}
+        restore-keys: |
+          ${{ runner.os }}-${{ inputs.cache-prefix }}-${{ inputs.otp-version }}-${{ inputs.elixir-version }}-
+          ${{ runner.os }}-${{ inputs.cache-prefix }}-${{ inputs.otp-version }}-
+
+    - name: Restore Dialyzer PLT cache
+      if: inputs.restore-plt-cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ inputs.working-directory }}/_build/dev/dialyxir*.plt
+          ${{ inputs.working-directory }}/_build/test/dialyxir*.plt
+        key: ${{ runner.os }}-plt-${{ inputs.otp-version }}-${{ inputs.elixir-version }}-${{ hashFiles(format('{0}/mix.lock', inputs.working-directory)) }}
+        restore-keys: |
+          ${{ runner.os }}-plt-${{ inputs.otp-version }}-${{ inputs.elixir-version }}-
+          ${{ runner.os }}-plt-${{ inputs.otp-version }}-
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.deps-command }}

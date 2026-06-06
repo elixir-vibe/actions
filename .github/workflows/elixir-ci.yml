@@ -1,0 +1,111 @@
+name: Elixir CI
+
+on:
+  workflow_call:
+    inputs:
+      latest-elixir:
+        description: Elixir version for the primary CI job.
+        required: false
+        type: string
+        default: "1.20"
+      latest-otp:
+        description: Erlang/OTP version for the primary CI job.
+        required: false
+        type: string
+        default: "29"
+      min-elixir:
+        description: Minimum supported Elixir version to verify.
+        required: false
+        type: string
+        default: "1.19"
+      min-otp:
+        description: Minimum supported Erlang/OTP version to verify.
+        required: false
+        type: string
+        default: "27"
+      working-directory:
+        description: Directory containing mix.exs.
+        required: false
+        type: string
+        default: .
+      deps-command:
+        description: Command used to fetch dependencies.
+        required: false
+        type: string
+        default: mix deps.get
+      latest-command:
+        description: Command run on the latest Elixir/OTP pair.
+        required: false
+        type: string
+        default: mix ci
+      min-command:
+        description: Command run on the minimum supported Elixir/OTP pair.
+        required: false
+        type: string
+        default: mix compile --warnings-as-errors && mix test
+      run-min:
+        description: Whether to run the minimum supported version check.
+        required: false
+        type: boolean
+        default: true
+      restore-deps-cache:
+        description: Whether to restore deps/_build cache.
+        required: false
+        type: boolean
+        default: true
+      restore-plt-cache:
+        description: Whether to restore Dialyzer PLT cache.
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  latest:
+    name: Elixir ${{ inputs.latest-elixir }} / OTP ${{ inputs.latest-otp }}
+    runs-on: ubuntu-latest
+    env:
+      MIX_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: elixir-vibe/actions/setup-elixir@v1
+        with:
+          elixir-version: ${{ inputs.latest-elixir }}
+          otp-version: ${{ inputs.latest-otp }}
+          working-directory: ${{ inputs.working-directory }}
+          deps-command: ${{ inputs.deps-command }}
+          restore-deps-cache: ${{ inputs.restore-deps-cache && 'true' || 'false' }}
+          restore-plt-cache: ${{ inputs.restore-plt-cache && 'true' || 'false' }}
+
+      - name: Run CI
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.latest-command }}
+
+  minimum:
+    if: inputs.run-min
+    name: Elixir ${{ inputs.min-elixir }} / OTP ${{ inputs.min-otp }}
+    runs-on: ubuntu-latest
+    env:
+      MIX_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: elixir-vibe/actions/setup-elixir@v1
+        with:
+          elixir-version: ${{ inputs.min-elixir }}
+          otp-version: ${{ inputs.min-otp }}
+          working-directory: ${{ inputs.working-directory }}
+          deps-command: ${{ inputs.deps-command }}
+          restore-deps-cache: ${{ inputs.restore-deps-cache && 'true' || 'false' }}
+          restore-plt-cache: ${{ inputs.restore-plt-cache && 'true' || 'false' }}
+
+      - name: Run minimum supported version check
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.min-command }}
