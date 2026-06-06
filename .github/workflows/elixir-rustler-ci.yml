@@ -1,0 +1,200 @@
+name: Elixir Rustler CI
+
+on:
+  workflow_call:
+    inputs:
+      latest-elixir:
+        description: Elixir version for the primary CI job.
+        required: false
+        type: string
+        default: "1.20"
+      latest-otp:
+        description: Erlang/OTP version for the primary CI job.
+        required: false
+        type: string
+        default: "29"
+      min-elixir:
+        description: Minimum supported Elixir version to verify.
+        required: false
+        type: string
+        default: "1.19"
+      min-otp:
+        description: Minimum supported Erlang/OTP version to verify.
+        required: false
+        type: string
+        default: "27"
+      working-directory:
+        description: Directory containing mix.exs.
+        required: false
+        type: string
+        default: .
+      deps-command:
+        description: Command used to fetch dependencies.
+        required: false
+        type: string
+        default: mix deps.get
+      latest-command:
+        description: Command run on the latest Elixir/OTP pair.
+        required: false
+        type: string
+        default: mix ci
+      min-command:
+        description: Command run on the minimum supported Elixir/OTP pair.
+        required: false
+        type: string
+        default: mix compile --warnings-as-errors && mix test
+      run-min:
+        description: Whether to run the minimum supported version check.
+        required: false
+        type: boolean
+        default: true
+      checkout-submodules:
+        description: Submodule checkout mode passed to actions/checkout.
+        required: false
+        type: string
+        default: "false"
+      rust-toolchain:
+        description: Rust toolchain to install, for example stable or 1.95.0.
+        required: false
+        type: string
+        default: stable
+      rust-profile:
+        description: Rustup profile to install.
+        required: false
+        type: string
+        default: minimal
+      rust-components:
+        description: Comma-separated Rust components to install.
+        required: false
+        type: string
+        default: rustfmt,clippy
+      rust-targets:
+        description: Comma-separated Rust targets to install.
+        required: false
+        type: string
+        default: ""
+      rust-cache-workspaces:
+        description: Newline-separated Swatinem/rust-cache workspaces.
+        required: false
+        type: string
+        default: ". -> target"
+      rust-cache-prefix:
+        description: Prefix for Rust cache keys.
+        required: false
+        type: string
+        default: rust
+      extra-env:
+        description: Newline-separated KEY=VALUE pairs exported before dependency installation and CI commands.
+        required: false
+        type: string
+        default: ""
+      restore-deps-cache:
+        description: Whether to restore deps/_build cache.
+        required: false
+        type: boolean
+        default: true
+      restore-plt-cache:
+        description: Whether to restore Dialyzer PLT cache.
+        required: false
+        type: boolean
+        default: true
+      restore-rust-cache:
+        description: Whether to restore Cargo/Rust build cache.
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  latest:
+    name: Elixir ${{ inputs.latest-elixir }} / OTP ${{ inputs.latest-otp }} / Rust ${{ inputs.rust-toolchain }}
+    runs-on: ubuntu-latest
+    env:
+      MIX_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.checkout-submodules }}
+
+      - name: Export extra environment
+        if: inputs.extra-env != ''
+        env:
+          EXTRA_ENV: ${{ inputs.extra-env }}
+        run: printf '%s\n' "$EXTRA_ENV" >> "$GITHUB_ENV"
+
+      - uses: elixir-vibe/actions/setup-elixir@v1
+        with:
+          elixir-version: ${{ inputs.latest-elixir }}
+          otp-version: ${{ inputs.latest-otp }}
+          working-directory: ${{ inputs.working-directory }}
+          deps-command: "true"
+          restore-deps-cache: ${{ inputs.restore-deps-cache && 'true' || 'false' }}
+          restore-plt-cache: ${{ inputs.restore-plt-cache && 'true' || 'false' }}
+
+      - uses: elixir-vibe/actions/setup-rust@v1
+        with:
+          rust-toolchain: ${{ inputs.rust-toolchain }}
+          rust-profile: ${{ inputs.rust-profile }}
+          rust-components: ${{ inputs.rust-components }}
+          rust-targets: ${{ inputs.rust-targets }}
+          rust-cache-workspaces: ${{ inputs.rust-cache-workspaces }}
+          rust-cache-prefix: ${{ inputs.rust-cache-prefix }}
+          restore-rust-cache: ${{ inputs.restore-rust-cache && 'true' || 'false' }}
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.deps-command }}
+
+      - name: Run CI
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.latest-command }}
+
+  minimum:
+    if: inputs.run-min
+    name: Elixir ${{ inputs.min-elixir }} / OTP ${{ inputs.min-otp }} / Rust ${{ inputs.rust-toolchain }}
+    runs-on: ubuntu-latest
+    env:
+      MIX_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.checkout-submodules }}
+
+      - name: Export extra environment
+        if: inputs.extra-env != ''
+        env:
+          EXTRA_ENV: ${{ inputs.extra-env }}
+        run: printf '%s\n' "$EXTRA_ENV" >> "$GITHUB_ENV"
+
+      - uses: elixir-vibe/actions/setup-elixir@v1
+        with:
+          elixir-version: ${{ inputs.min-elixir }}
+          otp-version: ${{ inputs.min-otp }}
+          working-directory: ${{ inputs.working-directory }}
+          deps-command: "true"
+          restore-deps-cache: ${{ inputs.restore-deps-cache && 'true' || 'false' }}
+          restore-plt-cache: ${{ inputs.restore-plt-cache && 'true' || 'false' }}
+
+      - uses: elixir-vibe/actions/setup-rust@v1
+        with:
+          rust-toolchain: ${{ inputs.rust-toolchain }}
+          rust-profile: ${{ inputs.rust-profile }}
+          rust-components: ${{ inputs.rust-components }}
+          rust-targets: ${{ inputs.rust-targets }}
+          rust-cache-workspaces: ${{ inputs.rust-cache-workspaces }}
+          rust-cache-prefix: ${{ inputs.rust-cache-prefix }}
+          restore-rust-cache: ${{ inputs.restore-rust-cache && 'true' || 'false' }}
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.deps-command }}
+
+      - name: Run minimum supported version check
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.min-command }}

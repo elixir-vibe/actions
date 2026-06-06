@@ -26,15 +26,58 @@ The default CI runs:
 - Elixir `1.20` / OTP `29` with `mix ci`
 - Elixir `1.19` / OTP `27` with `mix compile --warnings-as-errors && mix test`
 
-Override commands when a repository needs custom build flags:
+Override commands when a repository needs custom checks:
 
 ```yaml
 jobs:
   ci:
     uses: elixir-vibe/actions/.github/workflows/elixir-ci.yml@v1
     with:
-      latest-command: OXC_EX_BUILD=1 mix test
-      min-command: OXC_EX_BUILD=1 mix compile --warnings-as-errors && OXC_EX_BUILD=1 mix test
+      latest-command: mix ci
+      min-command: mix compile --warnings-as-errors && mix test
+```
+
+## Reusable Rustler CI
+
+Use this for Elixir projects that build Rustler NIFs or run Cargo checks:
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: elixir-vibe/actions/.github/workflows/elixir-rustler-ci.yml@v1
+    with:
+      rust-toolchain: stable
+      rust-cache-workspaces: native/my_app_nif -> target
+      extra-env: |
+        MY_APP_BUILD=1
+```
+
+For projects with multiple Rust crates, list each workspace:
+
+```yaml
+jobs:
+  ci:
+    uses: elixir-vibe/actions/.github/workflows/elixir-rustler-ci.yml@v1
+    with:
+      rust-toolchain: "1.95.0"
+      rust-profile: default
+      rust-cache-workspaces: |
+        . -> target
+        native/my_app_lint_nif -> target
+        native/my_app_fmt_nif -> target
+      extra-env: |
+        MY_APP_BUILD=1
 ```
 
 ## Setup Elixir composite action

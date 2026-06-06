@@ -1,0 +1,74 @@
+name: Setup Rust
+description: Set up a Rust toolchain with Cargo caching.
+
+inputs:
+  rust-toolchain:
+    description: Rust toolchain to install, for example stable or 1.95.0.
+    required: false
+    default: stable
+  rust-profile:
+    description: Rustup profile to install.
+    required: false
+    default: minimal
+  rust-components:
+    description: Comma-separated Rust components to install, for example rustfmt,clippy.
+    required: false
+    default: rustfmt,clippy
+  rust-targets:
+    description: Comma-separated Rust targets to install.
+    required: false
+    default: ""
+  rust-cache-workspaces:
+    description: Newline-separated Swatinem/rust-cache workspaces, for example "native/app -> target".
+    required: false
+    default: ". -> target"
+  rust-cache-prefix:
+    description: Prefix for Rust cache keys.
+    required: false
+    default: rust
+  restore-rust-cache:
+    description: Whether to restore Cargo/Rust build cache.
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Install Rust toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        args=("${{ inputs.rust-toolchain }}" "--profile" "${{ inputs.rust-profile }}")
+
+        if [ -n "${{ inputs.rust-components }}" ]; then
+          IFS=',' read -ra components <<< "${{ inputs.rust-components }}"
+          for component in "${components[@]}"; do
+            component="${component//[[:space:]]/}"
+            if [ -n "$component" ]; then
+              args+=("--component" "$component")
+            fi
+          done
+        fi
+
+        if [ -n "${{ inputs.rust-targets }}" ]; then
+          IFS=',' read -ra targets <<< "${{ inputs.rust-targets }}"
+          for target in "${targets[@]}"; do
+            target="${target//[[:space:]]/}"
+            if [ -n "$target" ]; then
+              args+=("--target" "$target")
+            fi
+          done
+        fi
+
+        rustup toolchain install "${args[@]}"
+        rustup default "${{ inputs.rust-toolchain }}"
+        cargo --version
+        rustc --version
+
+    - name: Restore Rust cache
+      if: inputs.restore-rust-cache == 'true'
+      uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ inputs.rust-cache-prefix }}-${{ inputs.rust-toolchain }}
+        workspaces: ${{ inputs.rust-cache-workspaces }}
