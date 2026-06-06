@@ -1,0 +1,115 @@
+name: Elixir Rustler Precompiled Release
+
+on:
+  workflow_call:
+    inputs:
+      project-name:
+        description: Rustler crate/project name passed to rustler-precompiled-action.
+        required: true
+        type: string
+      project-dir:
+        description: Project directory passed to rustler-precompiled-action.
+        required: false
+        type: string
+        default: .
+      project-version-command:
+        description: Shell command that prints the project version.
+        required: false
+        type: string
+        default: sed -n 's/^  @version "\(.*\)"/\1/p' mix.exs | head -n1
+      nif-versions:
+        description: JSON array of NIF versions to build.
+        required: false
+        type: string
+        default: '["2.15"]'
+      jobs:
+        description: JSON array of target jobs with target, os, and optional use-cross.
+        required: false
+        type: string
+        default: >-
+          [
+            {"target":"aarch64-unknown-linux-gnu","os":"ubuntu-22.04","use-cross":true},
+            {"target":"aarch64-apple-darwin","os":"macos-14"},
+            {"target":"x86_64-apple-darwin","os":"macos-15"},
+            {"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04"},
+            {"target":"x86_64-unknown-linux-musl","os":"ubuntu-22.04","use-cross":true}
+          ]
+      cargo-args:
+        description: Extra cargo arguments passed to rustler-precompiled-action.
+        required: false
+        type: string
+        default: ""
+      cross-version:
+        description: cross version passed to rustler-precompiled-action.
+        required: false
+        type: string
+        default: from-source
+      rust-cache:
+        description: Whether to restore Rust cache before building.
+        required: false
+        type: boolean
+        default: true
+      rust-cache-prefix:
+        description: Prefix for rust-cache keys.
+        required: false
+        type: string
+        default: rustler-precompiled
+
+permissions:
+  contents: write
+
+jobs:
+  build_release:
+    name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
+    runs-on: ${{ matrix.job.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        nif: ${{ fromJSON(inputs.nif-versions) }}
+        job: ${{ fromJSON(inputs.jobs) }}
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Extract project version
+        shell: bash
+        run: echo "PROJECT_VERSION=$(${{ inputs.project-version-command }})" >> "$GITHUB_ENV"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.job.target }}
+
+      - name: Restore Rust cache
+        if: inputs.rust-cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: ${{ inputs.rust-cache-prefix }}
+          shared-key: ${{ matrix.job.target }}-${{ matrix.nif }}
+
+      - name: Build the project
+        id: build-crate
+        uses: philss/rustler-precompiled-action@v1.1.4
+        with:
+          project-name: ${{ inputs.project-name }}
+          project-version: ${{ env.PROJECT_VERSION }}
+          target: ${{ matrix.job.target }}
+          nif-version: ${{ matrix.nif }}
+          use-cross: ${{ matrix.job.use-cross }}
+          project-dir: ${{ inputs.project-dir }}
+          cross-version: ${{ inputs.cross-version }}
+          cargo-args: ${{ inputs.cargo-args }}
+
+      - name: Artifact upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build-crate.outputs.file-name }}
+          path: ${{ steps.build-crate.outputs.file-path }}
+
+      - name: Publish archives and packages
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ${{ steps.build-crate.outputs.file-path }}

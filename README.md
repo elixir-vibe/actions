@@ -92,6 +92,26 @@ jobs:
         MY_APP_BUILD=1
 ```
 
+## Reusable Rustler precompiled release
+
+Use this from tag-triggered release workflows that build `rustler_precompiled` archives:
+
+```yaml
+name: Build precompiled NIFs
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build_release:
+    uses: elixir-vibe/actions/.github/workflows/elixir-rustler-release.yml@v1
+    with:
+      project-name: my_app_nif
+```
+
+Override `jobs`, `nif-versions`, `project-dir`, or `cargo-args` for repositories with custom target matrices.
+
 ## Setup Elixir composite action
 
 Use this when a repository needs custom jobs but wants the shared setup/cache steps:
