@@ -2,6 +2,8 @@
 
 Shared GitHub Actions and reusable workflows for Elixir Vibe and Elixir Volt projects.
 
+How our repositories present themselves — README structure, badges, descriptions, cross-linking — is codified in [README-STYLE.md](README-STYLE.md).
+
 ## Reusable Elixir CI
 
 ```yaml
