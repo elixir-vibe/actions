@@ -112,7 +112,36 @@ jobs:
       project-name: my_app_nif
 ```
 
-Override `jobs`, `nif-versions`, `project-dir`, or `cargo-args` for repositories with custom target matrices.
+Override `jobs`, `nif-versions`, `project-dir`, or `cargo-args` for repositories with custom target matrices. Native system dependencies and build-time environment variables are also centralized:
+
+```yaml
+jobs:
+  build_release:
+    uses: elixir-vibe/actions/.github/workflows/elixir-rustler-release.yml@v1
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    with:
+      project-name: my_app_nif
+      apt-packages: libxkbcommon-dev libxkbcommon-x11-dev
+      extra-env: |
+        MY_APP_BUILD=1
+      attest-artifacts: true
+```
+
+For a tagged `rustler_precompiled` release, the shared workflow can generate and attach the mandatory checksum after every matrix artifact has been published:
+
+```yaml
+    with:
+      project-name: my_app_nif
+      checksum-module: MyApp.Native
+      checksum-file: checksum-Elixir.MyApp.Native.exs
+      checksum-prepare-command: MY_APP_BUILD=1 mix compile
+```
+
+Checksum generation only runs for tags and remains disabled unless both checksum inputs are provided.
 
 ## Setup Elixir composite action
 
