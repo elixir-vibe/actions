@@ -149,7 +149,13 @@ jobs:
 
       - name: Extract project version
         shell: bash
-        run: echo "PROJECT_VERSION=$(${{ inputs.project-version-command }})" >> "$GITHUB_ENV"
+        run: |
+          version="$(${{ inputs.project-version-command }})"
+          if [[ -z "$version" ]]; then
+            echo "Project version command returned an empty value" >&2
+            exit 1
+          fi
+          echo "PROJECT_VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -177,10 +183,15 @@ jobs:
           cargo-args: ${{ inputs.cargo-args }}
 
       - name: Attest artifact
-        if: inputs.attest-artifacts
+        if: inputs.attest-artifacts && !github.event.repository.private
         uses: actions/attest@v4
         with:
           subject-path: ${{ steps.build-crate.outputs.file-path }}
+
+      - name: Note unavailable private-repository attestation
+        if: inputs.attest-artifacts && github.event.repository.private
+        shell: bash
+        run: echo "Artifact attestation is unavailable until the repository is public." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Artifact upload
         uses: actions/upload-artifact@v4
