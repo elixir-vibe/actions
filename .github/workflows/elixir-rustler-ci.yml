@@ -108,6 +108,11 @@ on:
         required: false
         type: boolean
         default: true
+      timeout-minutes:
+        description: Hard timeout for each CI job.
+        required: false
+        type: number
+        default: 30
 
 permissions:
   contents: read
@@ -120,6 +125,7 @@ jobs:
   latest:
     name: Elixir ${{ inputs.latest-elixir }} / OTP ${{ inputs.latest-otp }} / Rust ${{ inputs.rust-toolchain }}
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     env:
       MIX_ENV: test
     steps:
@@ -197,6 +203,7 @@ jobs:
     if: inputs.run-min
     name: Elixir ${{ inputs.min-elixir }} / OTP ${{ inputs.min-otp }} / Rust ${{ inputs.rust-toolchain }}
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     env:
       MIX_ENV: test
     steps:
