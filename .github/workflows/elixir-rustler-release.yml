@@ -133,6 +133,11 @@ jobs:
         with:
           submodules: ${{ inputs.checkout-submodules }}
 
+      - name: Enable Windows long paths
+        if: runner.os == 'Windows'
+        shell: bash
+        run: git config --global core.longpaths true
+
       - name: Export extra environment
         if: inputs.extra-env != ''
         shell: bash
