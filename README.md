@@ -143,6 +143,14 @@ For a tagged `rustler_precompiled` release, the shared workflow can generate and
 
 Checksum generation only runs for tags and remains disabled unless both checksum inputs are provided.
 
+Tagged releases also get their GitHub release notes from the changelog. After the builds finish, [parse-changelog](https://github.com/taiki-e/parse-changelog) extracts the section of `CHANGELOG.md` for the tagged version, and it becomes the release body. The job fails if the changelog has no section for that version. Point `changelog-file` elsewhere, or set it to an empty string to opt out:
+
+```yaml
+    with:
+      project-name: my_app_nif
+      changelog-file: ""
+```
+
 ## Setup Elixir composite action
 
 Use this when a repository needs custom jobs but wants the shared setup/cache steps:

@@ -104,6 +104,11 @@ on:
         required: false
         type: string
         default: mix compile
+      changelog-file:
+        description: Changelog whose section for the tagged version becomes the GitHub release notes. Set to an empty string to leave the notes untouched.
+        required: false
+        type: string
+        default: CHANGELOG.md
       timeout-minutes:
         description: Hard timeout for build and checksum jobs.
         required: false
@@ -264,3 +269,28 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ inputs.checksum-file }}
+
+  release_notes:
+    if: inputs.changelog-file != '' && startsWith(github.ref, 'refs/tags/')
+    needs: build_release
+    runs-on: ubuntu-22.04
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Install parse-changelog
+        uses: taiki-e/install-action@v2
+        with:
+          tool: parse-changelog
+
+      - name: Extract release notes
+        env:
+          CHANGELOG: ${{ inputs.changelog-file }}
+          TAG: ${{ github.ref_name }}
+        run: parse-changelog "$CHANGELOG" "${TAG#v}" > release-notes.md
+
+      - name: Publish release notes
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
